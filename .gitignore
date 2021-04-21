@@ -1,0 +1,4 @@
+*.ipynb
+*.Rmd
+dbcredentials.csv
+credentials.csv
