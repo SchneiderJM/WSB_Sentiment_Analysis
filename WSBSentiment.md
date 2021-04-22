@@ -45,3 +45,21 @@ words = stopwords.words('english')
 words = list(words)
 words.append('us')
 ```
+
+# Vader
+
+Vader is an out-of-the-box sentiment analyzer packaged with NLTK. It uses the sentence as a list of words and has a pre-trained sentiment for each word. Then it averages those sentiments to output the sentiment for your sentence. This approach has some significant downsides, but seems to work reasonably well in practice (or at least that's what I read online).
+
+```python
+#Downloads and installs Vader sentiment analyzer
+#import nltk
+#nltk.download('vader_lexicon')
+
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+SA = SentimentIntensityAnalyzer()
+```
+
+```python
+SA.polarity_scores('not good')
+```
