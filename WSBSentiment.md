@@ -170,13 +170,9 @@ post_update_string = '''UPDATE Posts
 ```
 
 ```python
-post_frame.iloc[4950]
-```
-
-```python
 #This randomly times out. I have no idea why, but if you just keep changing the loop indices and
 #re-running it, you'll eventually cover the whole database
-for i in range(4949,len(post_frame)):
+for i in range(len(post_frame)):
     WSBCursor.execute(post_update_string.format(post_frame['post_title_sentiment'][i],post_frame['self_text_sentiment'][i],post_frame['post_id'][i]))
     WSBDB.commit()
 ```
