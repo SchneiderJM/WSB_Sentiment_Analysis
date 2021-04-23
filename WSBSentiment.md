@@ -48,7 +48,7 @@ words.append('us')
 
 # Vader
 
-Vader is an out-of-the-box sentiment analyzer packaged with NLTK. It uses the sentence as a list of words and has a pre-trained sentiment for each word. Then it averages those sentiments to output the sentiment for your sentence. This approach has some significant downsides, but seems to work reasonably well in practice (or at least that's what I read online).
+Vader is an out-of-the-box sentiment analyzer packaged with NLTK. It takes sentence-tokenized paragraphs (or just individual sentences) and has a pre-trained sentiment for each word. Then it averages those sentiments to output the sentiment for the input sentence. This approach has some significant downsides, but seems to work reasonably well in practice (or at least that's what I read online).
 
 ```python
 #Downloads and installs Vader sentiment analyzer
@@ -56,10 +56,128 @@ Vader is an out-of-the-box sentiment analyzer packaged with NLTK. It uses the se
 #nltk.download('vader_lexicon')
 
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.tokenize import sent_tokenize
 
 SA = SentimentIntensityAnalyzer()
 ```
 
 ```python
-SA.polarity_scores('not good')
+SA.polarity_scores('hello this is good thing')
 ```
+
+## Adding Vader Sentiment to Existing Database Points
+
+Since computing sentiment is a little expensive and storage of data is cheap, it makes the most sense to me to compute it once then store the sentiment of a piece of text alongside the text in the database.
+
+
+### Comments:
+
+```python
+WSBCursor.execute('''SELECT comment_id, text FROM Comments''')
+
+comments = []
+for comment in WSBCursor:
+    comments.append(comment)
+```
+
+```python
+comment_frame = pd.DataFrame(comments,columns=['comment_id','text'])
+sentiments = []
+#loops over the data frame
+for i in range(len(comment_frame)):
+    ind_sentiments = []
+    #Sentence tokenizes the comments then loops over the list of sentences
+    for sentence in sent_tokenize(comment_frame['text'][i]):
+        #Gets the sentiment for each sentence
+        ind_sentiments.append(SA.polarity_scores(sentence)['compound'])
+    
+    #Appends the mean sentiment of each comment to the list
+    sentiments.append(sum(ind_sentiments)/(len(ind_sentiments)))
+#Creates a new row in the dataframe that includes the comment's sentiment
+comment_frame['comment_sentiment'] = sentiments
+```
+
+```python
+comment_frame
+```
+
+### Posts
+
+Basically the same as comments, only with a column each for title and self text (if applicable)
+
+```python
+WSBCursor.execute('''SELECT post_id, post_title, self_text FROM Posts''')
+
+posts = []
+for post in WSBCursor:
+    posts.append(post)
+```
+
+```python
+post_frame = pd.DataFrame(posts,columns=['post_id','post_title','self_text'])
+
+title_sentiments = []
+self_sentiments = []
+for i in range(len(post_frame)):
+    #holds individual sentiments for one title or post
+    ind_title = []
+    ind_self = []
+    for sentence in sent_tokenize(post_frame['post_title'][i]):
+        ind_title.append(SA.polarity_scores(sentence)['compound'])
+    
+    #Appends mean sentiment of title
+    title_sentiments.append(sum(ind_title)/len(ind_title))
+    
+    #Same thing for the self text
+    for sentence in sent_tokenize(post_frame['self_text'][i]):
+        ind_self.append(SA.polarity_scores(sentence)['compound'])
+        
+    #Appends mean sentiment of self text
+    if (len(ind_self) == 0):
+        self_sentiments.append(0)
+    else:
+        self_sentiments.append(sum(ind_self)/len(ind_self))
+    
+#Creates two new columns for the new sentiments
+post_frame['post_title_sentiment'] = title_sentiments
+post_frame['self_text_sentiment'] = self_sentiments
+```
+
+```python
+post_frame
+```
+
+### Updating Existing Records
+
+```python
+#Updating comments first
+comment_update_string = '''UPDATE Comments
+                            SET comment_sentiment = {}
+                            WHERE comment_id = {}'''
+```
+
+```python
+for i in range(len(comment_frame)):
+    WSBCursor.execute(comment_update_string.format(comment_frame['comment_sentiment'][i],comment_frame['comment_id'][i]))
+
+WSBDB.commit()
+```
+
+```python
+#Then updating the posts
+post_update_string = '''UPDATE Posts
+                        SET post_title_sentiment = {}
+                        SET self_text_sentiment = {}
+                        WHERE post_id = {}'''
+```
+
+```python
+for i in range(len(post_frame)):
+    WSBCursor.execute(post_update_string.format(post_frame['post_title_sentiment'][i],post_frame['self_text_sentiment'][i],post_frame['post_id'][i]))
+    
+WSBDB.commit()
+```
+
+## Summary
+
+This ended up being a lot simpler than I expected, I just implemented this into the twice daily job that pulls data from the database.
