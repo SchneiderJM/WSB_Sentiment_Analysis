@@ -159,23 +159,20 @@ comment_update_string = '''UPDATE Comments
 ```python
 for i in range(len(comment_frame)):
     WSBCursor.execute(comment_update_string.format(comment_frame['comment_sentiment'][i],comment_frame['comment_id'][i]))
-
-WSBDB.commit()
+    WSBDB.commit()
 ```
 
 ```python
 #Then updating the posts
 post_update_string = '''UPDATE Posts
-                        SET post_title_sentiment = {}
-                        SET self_text_sentiment = {}
+                        SET post_title_sentiment = {}, self_text_sentiment = {}
                         WHERE post_id = {}'''
 ```
 
 ```python
 for i in range(len(post_frame)):
     WSBCursor.execute(post_update_string.format(post_frame['post_title_sentiment'][i],post_frame['self_text_sentiment'][i],post_frame['post_id'][i]))
-    
-WSBDB.commit()
+    WSBDB.commit()
 ```
 
 ## Summary
